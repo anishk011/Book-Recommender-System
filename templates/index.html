@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Book Recommender{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-gradient mb-3">
+                <i class="fas fa-star text-warning me-3"></i>
+                Top 50 Popular Books
+            </h1>
+            <p class="lead text-muted">
+                Discover the most loved and highly-rated books from our collection
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if books %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
+        {% for book in books %}
+        <div class="col">
+            <div class="card h-100">
+                <img src="{{ book.image_url }}" 
+                     class="card-img-top" 
+                     alt="{{ book.title }}"
+                     onerror="this.src='https://via.placeholder.com/300x400?text=No+Image'">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title book-title">{{ book.title }}</h5>
+                    <p class="card-text book-author">
+                        <i class="fas fa-user me-1"></i>{{ book.author }}
+                    </p>
+                    <div class="mt-auto">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="rating">
+                                <i class="fas fa-star me-1"></i>{{ "%.1f"|format(book.rating) }}
+                            </span>
+                            <span class="votes">
+                                <i class="fas fa-users me-1"></i>{{ book.votes }} votes
+                            </span>
+                        </div>
+                        <button class="btn btn-primary btn-sm w-100" 
+                                onclick="getRecommendations('{{ book.title }}')">
+                            <i class="fas fa-lightbulb me-1"></i>Get Similar Books
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-books fa-3x text-muted mb-3"></i>
+        <h3 class="text-muted">No books available</h3>
+        <p class="text-muted">Please check back later or contact support if this issue persists.</p>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getRecommendations(bookTitle) {
+    // Redirect to recommendations page with the book title
+    window.location.href = `/recommend?book=${encodeURIComponent(bookTitle)}`;
+}
+
+// Add loading animation for images
+document.addEventListener('DOMContentLoaded', function() {
+    const images = document.querySelectorAll('.card-img-top');
+    images.forEach(img => {
+        img.addEventListener('load', function() {
+            this.classList.add('loaded');
+        });
+        img.addEventListener('error', function() {
+            this.src = 'https://via.placeholder.com/300x400?text=No+Image';
+            this.classList.add('loaded');
+        });
+    });
+});
+</script>
+{% endblock %}

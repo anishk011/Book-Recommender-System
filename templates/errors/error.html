@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Error - Book Recommender{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="py-5">
+            <i class="fas fa-exclamation-circle fa-5x text-warning mb-4"></i>
+            <h1 class="display-4 fw-bold text-muted">{{ error.code }}</h1>
+            <h2 class="h3 mb-3">{{ error.name }}</h2>
+            <p class="lead text-muted mb-4">
+                {{ error.description }}
+            </p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Go Home
+                </a>
+                <button onclick="history.back()" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Go Back
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

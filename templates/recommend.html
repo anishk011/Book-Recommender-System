@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Book Recommendations - Book Recommender{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-gradient mb-3">
+                <i class="fas fa-lightbulb text-warning me-3"></i>
+                Book Recommendations
+            </h1>
+            <p class="lead text-muted">
+                Enter a book title to discover similar books you might enjoy
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Search Form -->
+<div class="row justify-content-center mb-5">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <form action="{{ url_for('recommend_books') }}" method="post" id="recommendForm">
+                    <div class="mb-3">
+                        <label for="user_input" class="form-label fw-semibold">
+                            <i class="fas fa-search me-2"></i>Book Title
+                        </label>
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               id="user_input" 
+                               name="user_input" 
+                               placeholder="Enter a book title..."
+                               value="{{ search_query or '' }}"
+                               autocomplete="off"
+                               required>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Start typing to see available books
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-warning btn-lg" id="submitBtn">
+                            <span class="btn-text">
+                                <i class="fas fa-magic me-2"></i>Get Recommendations
+                            </span>
+                            <span class="loading">
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                Finding recommendations...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Autocomplete Results -->
+<div class="row justify-content-center mb-4" id="autocompleteContainer" style="display: none;">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Available Books
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="autocompleteList">
+                    <!-- Autocomplete items will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recommendations Results -->
+{% if recommendations %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-4">
+            <h2 class="h3 fw-bold">
+                <i class="fas fa-star text-warning me-2"></i>
+                Recommendations for "{{ search_query }}"
+            </h2>
+            <p class="text-muted">Based on your selection, here are similar books you might enjoy:</p>
+        </div>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4">
+    {% for book in recommendations %}
+    <div class="col">
+        <div class="card h-100">
+            <div class="position-relative">
+                <img src="{{ book.image_url }}" 
+                     class="card-img-top" 
+                     alt="{{ book.title }}"
+                     onerror="this.src='https://via.placeholder.com/300x400?text=No+Image'">
+                <div class="position-absolute top-0 end-0 m-2">
+                    <span class="badge bg-success">
+                        <i class="fas fa-percentage me-1"></i>
+                        {{ "%.1f"|format(book.similarity_score * 100) }}% match
+                    </span>
+                </div>
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title book-title">{{ book.title }}</h5>
+                <p class="card-text book-author">
+                    <i class="fas fa-user me-1"></i>{{ book.author }}
+                </p>
+                <div class="mt-auto">
+                    <button class="btn btn-primary btn-sm w-100" 
+                            onclick="getRecommendations('{{ book.title }}')">
+                        <i class="fas fa-lightbulb me-1"></i>Find Similar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- No Results Message -->
+{% if search_query and not recommendations %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card">
+            <div class="card-body py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h3 class="text-muted">No recommendations found</h3>
+                <p class="text-muted mb-3">
+                    We couldn't find recommendations for "{{ search_query }}". 
+                    Try searching for a different book title.
+                </p>
+                <button class="btn btn-primary" onclick="clearSearch()">
+                    <i class="fas fa-arrow-left me-2"></i>Try Another Book
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Available books for autocomplete
+const availableBooks = {{ available_books | tojson | safe }};
+
+// DOM elements
+const searchInput = document.getElementById('user_input');
+const autocompleteContainer = document.getElementById('autocompleteContainer');
+const autocompleteList = document.getElementById('autocompleteList');
+const submitBtn = document.getElementById('submitBtn');
+const recommendForm = document.getElementById('recommendForm');
+
+// Autocomplete functionality
+searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    
+    if (query.length < 2) {
+        autocompleteContainer.style.display = 'none';
+        return;
+    }
+    
+    const matches = availableBooks.filter(book => 
+        book.toLowerCase().includes(query)
+    ).slice(0, 10);
+    
+    if (matches.length > 0) {
+        displayAutocomplete(matches);
+    } else {
+        autocompleteContainer.style.display = 'none';
+    }
+});
+
+function displayAutocomplete(matches) {
+    autocompleteList.innerHTML = '';
+    
+    matches.forEach(book => {
+        const item = document.createElement('a');
+        item.href = '#';
+        item.className = 'list-group-item list-group-item-action';
+        item.textContent = book;
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            searchInput.value = book;
+            autocompleteContainer.style.display = 'none';
+        });
+        autocompleteList.appendChild(item);
+    });
+    
+    autocompleteContainer.style.display = 'block';
+}
+
+// Hide autocomplete when clicking outside
+document.addEventListener('click', function(e) {
+    if (!searchInput.contains(e.target) && !autocompleteContainer.contains(e.target)) {
+        autocompleteContainer.style.display = 'none';
+    }
+});
+
+// Form submission with loading state
+recommendForm.addEventListener('submit', function(e) {
+    if (!searchInput.value.trim()) {
+        e.preventDefault();
+        return;
+    }
+    
+    // Show loading state
+    submitBtn.querySelector('.btn-text').style.display = 'none';
+    submitBtn.querySelector('.loading').style.display = 'inline-block';
+    submitBtn.disabled = true;
+    
+    // Hide autocomplete
+    autocompleteContainer.style.display = 'none';
+});
+
+// Get recommendations for a specific book
+function getRecommendations(bookTitle) {
+    searchInput.value = bookTitle;
+    recommendForm.submit();
+}
+
+// Clear search and reset form
+function clearSearch() {
+    searchInput.value = '';
+    autocompleteContainer.style.display = 'none';
+    window.location.href = '{{ url_for("recommend_page") }}';
+}
+
+// Pre-fill search if book parameter is present in URL
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookParam = urlParams.get('book');
+    if (bookParam) {
+        searchInput.value = decodeURIComponent(bookParam);
+    }
+    
+    // Focus on search input
+    searchInput.focus();
+    
+    // Add loading animation for images
+    const images = document.querySelectorAll('.card-img-top');
+    images.forEach(img => {
+        img.addEventListener('load', function() {
+            this.classList.add('loaded');
+        });
+        img.addEventListener('error', function() {
+            this.src = 'https://via.placeholder.com/300x400?text=No+Image';
+            this.classList.add('loaded');
+        });
+    });
+});
+</script>
+{% endblock %}
